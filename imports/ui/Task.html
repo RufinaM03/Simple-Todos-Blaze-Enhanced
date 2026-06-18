@@ -1,10 +1,14 @@
 <template name="task">
   <li
-    class="task-item {{#if isChecked}}completed{{/if}} {{#if isTutorialStep 4}}tutorial-highlight{{/if}}"
+    class="task-item {{#if isChecked}}completed{{/if}}"
     data-id="{{_id}}"
     data-order="{{order}}"
   >
-    <span class="drag-handle" title="Drag to reorder">
+    <span
+      class="drag-handle {{#if isTutorialStep 4}}tutorial-highlight{{/if}}"
+      data-tour="drag-handle"
+      title="Drag to reorder"
+    >
       <span class="dot"></span><span class="dot"></span>
       <span class="dot"></span><span class="dot"></span>
       <span class="dot"></span><span class="dot"></span>
@@ -13,12 +17,11 @@
     <div class="task-content">
       <span class="task-text">{{text}}</span>
       <span
-        class="category-badge {{#if isTutorialStep 5}}tutorial-highlight{{/if}} edit-category-badge"
+        class="category-badge edit-category-badge"
         data-category="{{category}}"
-        style="background: {{categoryColor}}1a; color: {{categoryColor}}; border-color: {{categoryColor}}33"
+        style="background: {{categoryColor}}; color: {{categoryTextColor}}; border-color: transparent"
         title="{{#if isCustomCategory}}Click to edit category{{/if}}"
       >
-        <span class="cat-dot-sm" style="background:{{categoryColor}}"></span>
         {{category}} {{#if isCustomCategory}}<span class="edit-hint">✎</span
         >{{/if}}
       </span>
@@ -26,6 +29,7 @@
 
     <button
       class="toggle-checked {{#if isTutorialStep 5}}tutorial-highlight{{/if}}"
+      data-tour="task-complete"
       title="Mark complete"
     >
       {{#if isChecked}}

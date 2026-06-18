@@ -5,6 +5,23 @@ import { Accounts } from "meteor/accounts-base";
 
 import "./Login.html";
 
+const DARK_MODE_KEY = "darkMode";
+const DARK_MODE_STORAGE_KEY = "taskflowDarkMode";
+
+function getMainInstance(inst) {
+  let view = inst?.view;
+  while (view) {
+    const templateInst =
+      typeof view.templateInstance === "function"
+        ? view.templateInstance()
+        : null;
+    if (templateInst && templateInst.state) return templateInst;
+    view = view.parentView;
+  }
+
+  return null;
+}
+
 Template.login.onCreated(function () {
   this.isSignup = new ReactiveVar(false);
   this.errorMessage = new ReactiveVar("");
@@ -41,6 +58,13 @@ Template.login.helpers({
 
   errorMessage() {
     return Template.instance().errorMessage.get();
+  },
+
+  isDarkMode() {
+    const main = getMainInstance(Template.instance());
+    return main
+      ? main.state.get(DARK_MODE_KEY)
+      : localStorage.getItem(DARK_MODE_STORAGE_KEY) === "true";
   },
 });
 
@@ -104,5 +128,23 @@ Template.login.events({
   "click .switch-mode span"(event, instance) {
     instance.errorMessage.set("");
     instance.isSignup.set(!instance.isSignup.get());
+  },
+
+  "click .login-theme-toggle"(event, instance) {
+    event.preventDefault();
+
+    const main = getMainInstance(instance);
+    const isDark = main
+      ? main.state.get(DARK_MODE_KEY)
+      : document.body.classList.contains("dark");
+    const nextDark = !isDark;
+
+    if (main) {
+      main.state.set(DARK_MODE_KEY, nextDark);
+    } else {
+      document.body.classList.toggle("dark", nextDark);
+    }
+
+    localStorage.setItem(DARK_MODE_STORAGE_KEY, String(nextDark));
   },
 });

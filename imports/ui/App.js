@@ -4,7 +4,6 @@ import { TasksCollection } from "../db/TasksCollection";
 import { CategoriesCollection } from "../db/CategoriesCollection";
 import { Tracker } from "meteor/tracker";
 import { ReactiveDict } from "meteor/reactive-dict";
-import { ReactiveVar } from "meteor/reactive-var";
 import Sortable from "sortablejs";
 
 import "./App.html";
@@ -24,6 +23,7 @@ const S = {
   EDITING_CAT_ID: "editingCategoryId",
   SELECTED_COLOR: "selectedColor",
   DARK_MODE: "darkMode",
+  TUTORIAL_CARD_STYLE: "tutorialCardStyle",
 };
 
 const DEFAULT_COLORS = [
@@ -47,44 +47,59 @@ const tutorialSteps = [
   {
     title: "Add a task",
     text: "Type a task in the input field, pick a category, and click Add Task.",
-    target: "step-0",
+    selector: '[data-tour="task-form"]',
   },
   {
     title: "Pick a category",
     text: "Choose Work, Personal, Urgent — or any custom category you create.",
-    target: "step-1",
+    selector: '[data-tour="category-select"]',
   },
   {
     title: "Create new categories",
     text: "Click '＋ Category' to open the category builder and add your own.",
-    target: "step-2",
+    selector: '[data-tour="add-category"]',
   },
   {
     title: "Filter by category",
     text: "Use the category bar to filter tasks by type. Combine with Hide Done.",
-    target: "step-3",
+    selector: '[data-tour="category-filters"]',
   },
   {
     title: "Drag to reorder",
     text: "Grab the dot handle on the left of any task and drag it to reorder.",
-    target: "step-4",
+    selector: '[data-tour="drag-handle"], [data-tour="task-list"]',
   },
   {
     title: "Mark tasks done",
     text: "Click the Done button on a task to mark it complete. Click ✓ to undo.",
-    target: "step-5",
+    selector: '[data-tour="task-complete"], [data-tour="task-list"]',
   },
   {
     title: "List or Grid view",
     text: "Switch between a compact list and a card grid using the icons top-right.",
-    target: "step-6",
+    selector: '[data-tour="view-toggle"]',
   },
   {
     title: "Dark mode",
     text: "Click the moon icon in the header to switch between light and dark themes.",
-    target: "step-7",
+    selector: '[data-tour="theme-toggle"]',
   },
 ];
+
+const TUTORIAL_CARD_MARGIN = 16;
+const TUTORIAL_CARD_FALLBACK_STYLE = "top: 96px; left: 24px;";
+
+const getReadableTextColor = (hexColor) => {
+  const hex = (hexColor || "").replace("#", "");
+  if (!/^[0-9a-f]{6}$/i.test(hex)) return "#ffffff";
+
+  const red = parseInt(hex.slice(0, 2), 16);
+  const green = parseInt(hex.slice(2, 4), 16);
+  const blue = parseInt(hex.slice(4, 6), 16);
+  const brightness = (red * 299 + green * 587 + blue * 114) / 1000;
+
+  return brightness > 155 ? "#0f172a" : "#ffffff";
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const getUser = () => Meteor.user();
@@ -96,6 +111,210 @@ const getTasksFilter = () => {
   const userFilter = user ? { userId: user._id } : {};
   const pendingOnly = { ...hideFilter, ...userFilter };
   return { userFilter, pendingOnly };
+};
+
+const getMainInstance = (inst) => {
+  if (!inst) return null;
+  if (inst.state) return inst;
+
+  let view = inst.view;
+  while (view) {
+    const templateInst =
+      typeof view.templateInstance === "function"
+        ? view.templateInstance()
+        : null;
+    if (templateInst && templateInst.state) return templateInst;
+    view = view.parentView;
+  }
+
+  return null;
+};
+
+const getVisibleTasks = (inst) => {
+  if (!isUserLogged()) return [];
+
+  const hideComp = inst.state.get(S.HIDE_COMPLETED);
+  const activeCat = inst.state.get(S.ACTIVE_CATEGORY);
+  const search = (inst.state.get(S.SEARCH) || "").toLowerCase();
+  const { pendingOnly, userFilter } = getTasksFilter();
+
+  let filter = hideComp ? pendingOnly : userFilter;
+  if (activeCat && activeCat !== "all") {
+    filter = { ...filter, category: activeCat };
+  }
+
+  let tasks = TasksCollection.find(filter, { sort: { order: 1 } }).fetch();
+
+  if (search) {
+    tasks = tasks.filter((t) => t.text.toLowerCase().includes(search));
+  }
+
+  return tasks;
+};
+
+const openNewCategoryModal = (inst) => {
+  const main = getMainInstance(inst);
+  if (!main) return;
+
+  main.state.set(S.EDITING_CAT_ID, null);
+  main.state.set(S.SELECTED_COLOR, DEFAULT_COLORS[0].value);
+  main.state.set(S.SHOW_CAT_MODAL, true);
+  Meteor.defer(() => document.getElementById("category-name-input")?.focus());
+};
+
+const closeCategoryModal = (inst) => {
+  const main = getMainInstance(inst);
+  if (!main) return;
+
+  main.state.set(S.SHOW_CAT_MODAL, false);
+  main.state.set(S.EDITING_CAT_ID, null);
+};
+
+const selectTaskFormCategory = (name, attempts = 0) => {
+  Meteor.defer(() => {
+    const select = document.querySelector('.task-form select[name="category"]');
+    if (!select) return;
+
+    const hasOption = Array.from(select.options).some(
+      (option) => option.value === name,
+    );
+
+    if (hasOption) {
+      select.value = name;
+    } else if (attempts < 5) {
+      Meteor.setTimeout(() => selectTaskFormCategory(name, attempts + 1), 50);
+    }
+  });
+};
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+const getTutorialStep = (step) => tutorialSteps[step] || tutorialSteps[0];
+
+const getTutorialTarget = (step) => {
+  const selector = getTutorialStep(step)?.selector;
+  return selector ? document.querySelector(selector) : null;
+};
+
+const positionTutorialCard = (inst) => {
+  if (!inst.state.get(S.SHOW_TUTORIAL)) return;
+
+  const card = inst.find(".tutorial-card");
+  const target = getTutorialTarget(inst.state.get(S.TUTORIAL_STEP));
+
+  if (!card || !target) {
+    inst.state.set(S.TUTORIAL_CARD_STYLE, TUTORIAL_CARD_FALLBACK_STYLE);
+    return;
+  }
+
+  const targetRect = target.getBoundingClientRect();
+  const cardRect = card.getBoundingClientRect();
+  const maxLeft = Math.max(
+    TUTORIAL_CARD_MARGIN,
+    window.innerWidth - cardRect.width - TUTORIAL_CARD_MARGIN,
+  );
+  const maxTop = Math.max(
+    TUTORIAL_CARD_MARGIN,
+    window.innerHeight - cardRect.height - TUTORIAL_CARD_MARGIN,
+  );
+
+  let left = targetRect.left + targetRect.width / 2 - cardRect.width / 2;
+  let top = targetRect.bottom + TUTORIAL_CARD_MARGIN;
+
+  if (top + cardRect.height + TUTORIAL_CARD_MARGIN > window.innerHeight) {
+    top = targetRect.top - cardRect.height - TUTORIAL_CARD_MARGIN;
+  }
+
+  left = clamp(left, TUTORIAL_CARD_MARGIN, maxLeft);
+  top = clamp(top, TUTORIAL_CARD_MARGIN, maxTop);
+
+  inst.state.set(
+    S.TUTORIAL_CARD_STYLE,
+    `top: ${Math.round(top)}px; left: ${Math.round(left)}px;`,
+  );
+};
+
+const revealTutorialStep = (inst) => {
+  const target = getTutorialTarget(inst.state.get(S.TUTORIAL_STEP));
+
+  if (target) {
+    target.scrollIntoView({
+      block: "center",
+      inline: "nearest",
+      behavior: "smooth",
+    });
+  }
+
+  Meteor.setTimeout(() => positionTutorialCard(inst), target ? 260 : 0);
+};
+
+const startTutorial = (inst) => {
+  const main = getMainInstance(inst);
+  if (!main) return;
+
+  closeCategoryModal(main);
+  main.state.set(S.ACTIVE_CATEGORY, "all");
+  main.state.set(S.HIDE_COMPLETED, false);
+  main.state.set(S.SEARCH, "");
+  main.state.set(S.TUTORIAL_STEP, 0);
+  main.state.set(S.SHOW_TUTORIAL, true);
+  main.state.set(S.TUTORIAL_CARD_STYLE, TUTORIAL_CARD_FALLBACK_STYLE);
+  localStorage.removeItem("taskflowTutorialSeen");
+  Meteor.defer(() => revealTutorialStep(main));
+};
+
+const finishTutorial = (inst) => {
+  inst.state.set(S.SHOW_TUTORIAL, false);
+  localStorage.setItem("taskflowTutorialSeen", "true");
+};
+
+const destroySortable = (inst) => {
+  if (!inst._sortable) return;
+  inst._sortable.destroy();
+  inst._sortable = null;
+};
+
+const syncSortable = (inst) => {
+  const list = inst.find(".tasks");
+  if (!list) {
+    destroySortable(inst);
+    return;
+  }
+
+  if (inst._sortable && inst._sortable.el === list) return;
+
+  destroySortable(inst);
+  inst._sortable = Sortable.create(list, {
+    animation: 180,
+    easing: "cubic-bezier(0.2, 0, 0, 1)",
+    handle: ".drag-handle",
+    draggable: ".task-item",
+    forceFallback: true,
+    fallbackOnBody: true,
+    fallbackTolerance: 4,
+    ghostClass: "sortable-ghost",
+    chosenClass: "sortable-chosen",
+    dragClass: "sortable-drag",
+    swapThreshold: 0.65,
+    invertSwap: true,
+    direction: () =>
+      inst.state.get(S.VIEW_MODE) === "grid" ? "horizontal" : "vertical",
+    onStart() {
+      list.classList.add("is-sorting");
+    },
+    onEnd(evt) {
+      list.classList.remove("is-sorting");
+      if (evt.oldIndex === evt.newIndex) return;
+
+      const orderedTaskIds = Array.from(list.querySelectorAll(".task-item"))
+        .map((el) => el.dataset.id)
+        .filter(Boolean);
+
+      if (orderedTaskIds.length > 1) {
+        Meteor.call("tasks.reorderMany", orderedTaskIds);
+      }
+    },
+  });
 };
 
 // ─── Template: mainContainer ──────────────────────────────────────────────────
@@ -118,6 +337,7 @@ Template.mainContainer.onCreated(function () {
   this.state.set(S.EDITING_CAT_ID, null);
   this.state.set(S.SELECTED_COLOR, DEFAULT_COLORS[0].value);
   this.state.set(S.DARK_MODE, savedDark);
+  this.state.set(S.TUTORIAL_CARD_STYLE, TUTORIAL_CARD_FALLBACK_STYLE);
 
   // Subscribe
   const tasksHandler = Meteor.subscribe("tasks");
@@ -139,40 +359,42 @@ Template.mainContainer.onCreated(function () {
 
 Template.mainContainer.onRendered(function () {
   this._sortable = null;
+  this._positionTutorial = () => positionTutorialCard(this);
+  window.addEventListener("resize", this._positionTutorial);
 
   this.autorun(() => {
-    if (!Meteor.user()) return;
-    const viewMode = this.state.get(S.VIEW_MODE);
+    const user = Meteor.user();
+    const isLoading = this.state.get(S.IS_LOADING);
+    this.state.get(S.VIEW_MODE);
+    const visibleTaskIds = getVisibleTasks(this).map((task) => task._id);
 
     Meteor.defer(() => {
-      const list = document.querySelector(".tasks");
-      if (!list) return;
-
-      if (this._sortable) {
-        this._sortable.destroy();
-        this._sortable = null;
+      if (!user || isLoading || visibleTaskIds.length < 2) {
+        destroySortable(this);
+        return;
       }
 
-      this._sortable = Sortable.create(list, {
-        animation: 250,
-        handle: ".drag-handle",
-        forceFallback: true,
-        ghostClass: "sortable-ghost",
-        chosenClass: "sortable-chosen",
-        onEnd(evt) {
-          const items = list.querySelectorAll(".task-item");
-          items.forEach((el, idx) => {
-            const id = el.dataset.id;
-            if (id) Meteor.call("tasks.reorder", id, idx * 10);
-          });
-        },
-      });
+      syncSortable(this);
     });
+  });
+
+  this.autorun(() => {
+    const showTutorial = this.state.get(S.SHOW_TUTORIAL);
+    this.state.get(S.TUTORIAL_STEP);
+    this.state.get(S.VIEW_MODE);
+    getVisibleTasks(this).map((task) => task._id).join(",");
+
+    if (showTutorial) {
+      Meteor.defer(() => revealTutorialStep(this));
+    }
   });
 });
 
 Template.mainContainer.onDestroyed(function () {
-  if (this._sortable) this._sortable.destroy();
+  destroySortable(this);
+  if (this._positionTutorial) {
+    window.removeEventListener("resize", this._positionTutorial);
+  }
 });
 
 // ─── Events ───────────────────────────────────────────────────────────────────
@@ -189,15 +411,17 @@ Template.mainContainer.events({
   "click .next-tutorial"(e, inst) {
     const step = inst.state.get(S.TUTORIAL_STEP);
     if (step >= tutorialSteps.length - 1) {
-      inst.state.set(S.SHOW_TUTORIAL, false);
-      localStorage.setItem("taskflowTutorialSeen", "true");
+      finishTutorial(inst);
     } else {
       inst.state.set(S.TUTORIAL_STEP, step + 1);
     }
   },
   "click .skip-tutorial"(e, inst) {
-    inst.state.set(S.SHOW_TUTORIAL, false);
-    localStorage.setItem("taskflowTutorialSeen", "true");
+    finishTutorial(inst);
+  },
+  "click .start-tutorial"(e, inst) {
+    e.preventDefault();
+    startTutorial(inst);
   },
 
   // Category filter
@@ -226,57 +450,8 @@ Template.mainContainer.events({
 
   // Category modal open
   "click #open-category-modal"(e, inst) {
-    inst.state.set(S.EDITING_CAT_ID, null);
-    inst.state.set(S.SELECTED_COLOR, DEFAULT_COLORS[0].value);
-    inst.state.set(S.SHOW_CAT_MODAL, true);
-  },
-  "click .modal-close, click .modal-cancel"(e, inst) {
-    inst.state.set(S.SHOW_CAT_MODAL, false);
-    inst.state.set(S.EDITING_CAT_ID, null);
-  },
-  "click .modal-backdrop"(e, inst) {
-    if (e.target === e.currentTarget) {
-      inst.state.set(S.SHOW_CAT_MODAL, false);
-      inst.state.set(S.EDITING_CAT_ID, null);
-    }
-  },
-
-  // Color swatch
-  "click .swatch"(e, inst) {
-    inst.state.set(S.SELECTED_COLOR, e.currentTarget.dataset.color);
-  },
-
-  // Create category
-  "click .create-category-btn"(e, inst) {
-    const name = document.getElementById("category-name-input").value.trim();
-    const color = inst.state.get(S.SELECTED_COLOR);
-    if (!name) return;
-    Meteor.call("categories.insert", { name, color }, (err) => {
-      if (!err) inst.state.set(S.SHOW_CAT_MODAL, false);
-    });
-  },
-
-  // Save (edit) category
-  "click .save-category-btn"(e, inst) {
-    const id = inst.state.get(S.EDITING_CAT_ID);
-    const name = document.getElementById("category-name-input").value.trim();
-    const color = inst.state.get(S.SELECTED_COLOR);
-    if (!name || !id) return;
-    Meteor.call("categories.update", id, { name, color }, (err) => {
-      if (!err) inst.state.set(S.SHOW_CAT_MODAL, false);
-    });
-  },
-
-  // Delete category
-  "click .delete-category-btn"(e, inst) {
-    const id = inst.state.get(S.EDITING_CAT_ID);
-    if (!id) return;
-    if (confirm("Delete this category? Tasks will move to Uncategorized.")) {
-      Meteor.call("categories.remove", id, () => {
-        inst.state.set(S.SHOW_CAT_MODAL, false);
-        inst.state.set(S.ACTIVE_CATEGORY, "all");
-      });
-    }
+    e.preventDefault();
+    openNewCategoryModal(inst);
   },
 
   // Edit category via badge click (delegated from tasks area)
@@ -303,42 +478,12 @@ Template.mainContainer.events({
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 Template.mainContainer.helpers({
   tasks() {
-    const inst = Template.instance();
-    const hideComp = inst.state.get(S.HIDE_COMPLETED);
-    const activeCat = inst.state.get(S.ACTIVE_CATEGORY);
-    const search = (inst.state.get(S.SEARCH) || "").toLowerCase();
-    const { pendingOnly, userFilter } = getTasksFilter();
-
-    if (!isUserLogged()) return [];
-
-    let filter = hideComp ? pendingOnly : userFilter;
-    if (activeCat && activeCat !== "all") {
-      filter = { ...filter, category: activeCat };
-    }
-
-    let tasks = TasksCollection.find(filter, { sort: { order: 1 } }).fetch();
-
-    if (search) {
-      tasks = tasks.filter((t) => t.text.toLowerCase().includes(search));
-    }
-
-    return tasks;
+    return getVisibleTasks(Template.instance());
   },
 
   hasNoTasks() {
-    const inst = Template.instance();
-    const hideComp = inst.state.get(S.HIDE_COMPLETED);
-    const activeCat = inst.state.get(S.ACTIVE_CATEGORY);
-    const search = (inst.state.get(S.SEARCH) || "").toLowerCase();
-    const { pendingOnly, userFilter } = getTasksFilter();
     if (!isUserLogged()) return false;
-    let filter = hideComp ? pendingOnly : userFilter;
-    if (activeCat && activeCat !== "all")
-      filter = { ...filter, category: activeCat };
-    let tasks = TasksCollection.find(filter).fetch();
-    if (search)
-      tasks = tasks.filter((t) => t.text.toLowerCase().includes(search));
-    return tasks.length === 0;
+    return getVisibleTasks(Template.instance()).length === 0;
   },
 
   emptyStateTitle() {
@@ -359,7 +504,12 @@ Template.mainContainer.helpers({
   },
 
   allCategories() {
-    return CategoriesCollection.find({}, { sort: { order: 1 } }).fetch();
+    return CategoriesCollection.find({}, { sort: { order: 1 } })
+      .fetch()
+      .map((category) => ({
+        ...category,
+        textColor: getReadableTextColor(category.color),
+      }));
   },
 
   isActiveCategory(name) {
@@ -436,6 +586,12 @@ Template.mainContainer.helpers({
     const s = Template.instance().state.get(S.TUTORIAL_STEP);
     return tutorialSteps[s].text;
   },
+  tutorialCardStyle() {
+    return (
+      Template.instance().state.get(S.TUTORIAL_CARD_STYLE) ||
+      TUTORIAL_CARD_FALLBACK_STYLE
+    );
+  },
   isLastTutorialStep() {
     return (
       Template.instance().state.get(S.TUTORIAL_STEP) ===
@@ -450,22 +606,108 @@ Template.mainContainer.helpers({
     );
   },
 
-  // Modal helpers
+});
+
+// ─── Template: categoryModal ──────────────────────────────────────────────────
+Template.categoryModal.helpers({
+  showCategoryModal() {
+    const main = getMainInstance(Template.instance());
+    return main ? main.state.get(S.SHOW_CAT_MODAL) : false;
+  },
   editingCategory() {
-    const id = Template.instance().state.get(S.EDITING_CAT_ID);
+    const main = getMainInstance(Template.instance());
+    const id = main && main.state.get(S.EDITING_CAT_ID);
     return id ? CategoriesCollection.findOne(id) : null;
   },
   editingCategoryName() {
-    const id = Template.instance().state.get(S.EDITING_CAT_ID);
+    const main = getMainInstance(Template.instance());
+    const id = main && main.state.get(S.EDITING_CAT_ID);
     if (!id) return "";
     const cat = CategoriesCollection.findOne(id);
     return cat ? cat.name : "";
   },
-  colorOptions() {
-    return DEFAULT_COLORS;
+  selectedColor() {
+    const main = getMainInstance(Template.instance());
+    return main ? main.state.get(S.SELECTED_COLOR) : DEFAULT_COLORS[0].value;
   },
-  isSelectedColor(val) {
-    return Template.instance().state.get(S.SELECTED_COLOR) === val;
+  selectedColorText() {
+    const main = getMainInstance(Template.instance());
+    const color = main ? main.state.get(S.SELECTED_COLOR) : DEFAULT_COLORS[0].value;
+    return getReadableTextColor(color);
+  },
+});
+
+Template.categoryModal.events({
+  "click .modal-close, click .modal-cancel"(e, inst) {
+    e.preventDefault();
+    closeCategoryModal(inst);
+  },
+
+  "click .modal-backdrop"(e, inst) {
+    if (e.target === e.currentTarget) {
+      closeCategoryModal(inst);
+    }
+  },
+
+  "input .category-color-input"(e, inst) {
+    const main = getMainInstance(inst);
+    if (main) main.state.set(S.SELECTED_COLOR, e.currentTarget.value);
+  },
+
+  "change .category-color-input"(e, inst) {
+    const main = getMainInstance(inst);
+    if (main) main.state.set(S.SELECTED_COLOR, e.currentTarget.value);
+  },
+
+  "submit .category-modal-form"(e, inst) {
+    e.preventDefault();
+    const main = getMainInstance(inst);
+    if (!main) return;
+
+    const input = inst.find("#category-name-input");
+    const name = input ? input.value.trim() : "";
+    const color = main.state.get(S.SELECTED_COLOR);
+    const id = main.state.get(S.EDITING_CAT_ID);
+    if (!name) return;
+
+    if (id) {
+      Meteor.call("categories.update", id, { name, color }, (err) => {
+        if (err) {
+          alert(err.reason || err.message);
+          return;
+        }
+        closeCategoryModal(main);
+        selectTaskFormCategory(name);
+      });
+      return;
+    }
+
+    Meteor.call("categories.insert", { name, color }, (err) => {
+      if (err) {
+        alert(err.reason || err.message);
+        return;
+      }
+      closeCategoryModal(main);
+      selectTaskFormCategory(name);
+    });
+  },
+
+  "click .delete-category-btn"(e, inst) {
+    e.preventDefault();
+    const main = getMainInstance(inst);
+    const id = main && main.state.get(S.EDITING_CAT_ID);
+    if (!id) return;
+
+    if (confirm("Delete this category? Tasks will move to Uncategorized.")) {
+      Meteor.call("categories.remove", id, (err) => {
+        if (err) {
+          alert(err.reason || err.message);
+          return;
+        }
+        closeCategoryModal(main);
+        main.state.set(S.ACTIVE_CATEGORY, "all");
+      });
+    }
   },
 });
 
@@ -475,7 +717,7 @@ Template.form.helpers({
     return CategoriesCollection.find({}, { sort: { order: 1 } }).fetch();
   },
   isTutorialStep(n) {
-    const main = Template.instance().view.parentView.templateInstance();
+    const main = getMainInstance(Template.instance());
     if (!main || !main.state) return false;
     return (
       main.state.get(S.SHOW_TUTORIAL) && main.state.get(S.TUTORIAL_STEP) === n
@@ -484,6 +726,12 @@ Template.form.helpers({
 });
 
 Template.form.events({
+  "click #open-category-modal"(event, inst) {
+    event.preventDefault();
+    event.stopPropagation();
+    openNewCategoryModal(inst);
+  },
+
   "submit .task-form"(event) {
     event.preventDefault();
     const { target } = event;

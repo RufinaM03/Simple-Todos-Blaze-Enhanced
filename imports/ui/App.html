@@ -6,14 +6,22 @@
   <div class="app {{theme}}">
     {{#if isUserLogged}}
 
-    <header class="app-hero">
+    <header class="app-hero {{#if isTutorialStep 7}}tutorial-layer{{/if}}">
       <div class="app-bar">
         <div class="title-group">
           <h1>📝 TaskFlow</h1>
           <p class="subtitle">{{remainingTasksText}}</p>
         </div>
         <div class="app-bar-actions">
-          <button class="theme-toggle" title="Toggle dark mode">
+          <button type="button" class="start-tutorial" title="Start quick tour">
+            Tour
+          </button>
+          <button
+            type="button"
+            class="theme-toggle {{#if isTutorialStep 7}}tutorial-highlight{{/if}}"
+            data-tour="theme-toggle"
+            title="Toggle dark mode"
+          >
             {{#if isDarkMode}}☀️{{else}}🌙{{/if}}
           </button>
           <button class="logout-button user">
@@ -26,7 +34,10 @@
     <main class="main">
       {{#if showTutorial}}
       <div class="tutorial-backdrop"></div>
-      <div class="tutorial-card tutorial-step-{{tutorialStep}}">
+      <div
+        class="tutorial-card tutorial-step-{{tutorialStep}}"
+        style="{{tutorialCardStyle}}"
+      >
         <span class="tutorial-badge"
           >Quick Tour — {{tutorialStepNum}}/{{tutorialTotalSteps}}</span
         >
@@ -44,6 +55,7 @@
       <div class="controls-bar">
         <div
           class="category-filters {{#if isTutorialStep 3}}tutorial-highlight{{/if}}"
+          data-tour="category-filters"
         >
           <button
             class="filter-btn {{#if isActiveCategory 'all'}}active{{/if}}"
@@ -53,11 +65,11 @@
           </button>
           {{#each allCategories}}
           <button
-            class="filter-btn {{#if ../isActiveCategory name}}active{{/if}}"
+            class="filter-btn {{#if isActiveCategory name}}active{{/if}}"
             data-category="{{name}}"
-            style="--cat-color: {{color}}"
+            style="--cat-color: {{color}}; --cat-text-color: {{textColor}}"
           >
-            <span class="cat-dot" style="background:{{color}}"></span>{{name}}
+            {{name}}
           </button>
           {{/each}}
         </div>
@@ -72,6 +84,7 @@
           </button>
           <div
             class="view-toggle {{#if isTutorialStep 6}}tutorial-highlight{{/if}}"
+            data-tour="view-toggle"
           >
             <button
               class="view-btn {{#if isListView}}active{{/if}}"
@@ -173,7 +186,7 @@
         <p>{{emptyStateText}}</p>
       </div>
       {{else}}
-      <ul class="tasks {{viewClass}}">
+      <ul class="tasks {{viewClass}}" data-tour="task-list">
         {{#each tasks}}{{> task}}{{/each}}
       </ul>
       {{/if}} {{/if}}
@@ -184,14 +197,20 @@
 </template>
 
 <template name="form">
-  <form class="task-form {{#if isTutorialStep 0}}tutorial-highlight{{/if}}">
+  <form
+    class="task-form {{#if isTutorialStep 0}}tutorial-highlight{{/if}}"
+    data-tour="task-form"
+  >
     <input
       type="text"
       name="text"
       placeholder="What needs to be done?"
       autocomplete="off"
     />
-    <div class="select-wrap {{#if isTutorialStep 1}}tutorial-highlight{{/if}}">
+    <div
+      class="select-wrap {{#if isTutorialStep 1}}tutorial-highlight{{/if}}"
+      data-tour="category-select"
+    >
       <select name="category">
         <option value="" disabled selected>Category</option>
         {{#each allCategories}}
@@ -203,6 +222,7 @@
       type="button"
       class="add-category-btn {{#if isTutorialStep 2}}tutorial-highlight{{/if}}"
       id="open-category-modal"
+      data-tour="add-category"
       title="Add new category"
     >
       ＋ Category
@@ -217,37 +237,51 @@
     <div class="modal-card">
       <div class="modal-header">
         <h3>{{#if editingCategory}}Edit Category{{else}}New Category{{/if}}</h3>
-        <button class="modal-close">✕</button>
+        <button type="button" class="modal-close">✕</button>
       </div>
-      <div class="modal-body">
-        <label>Category Name</label>
-        <input
-          type="text"
-          id="category-name-input"
-          placeholder="e.g. Study, Health…"
-          value="{{editingCategoryName}}"
-        />
-        <label>Tag Color</label>
-        <div class="color-swatches">
-          {{#each colorOptions}}
-          <button
-            class="swatch {{#if isSelectedColor value}}selected{{/if}}"
-            data-color="{{value}}"
-            style="background:{{value}}"
-            title="{{label}}"
-          ></button>
-          {{/each}}
+      <form class="category-modal-form">
+        <div class="modal-body">
+          <label>Category Name</label>
+          <input
+            type="text"
+            id="category-name-input"
+            placeholder="e.g. Study, Health…"
+            value="{{editingCategoryName}}"
+          />
+          <label>Tag Color</label>
+          <div class="color-wheel-row">
+            <input
+              type="color"
+              class="category-color-input"
+              value="{{selectedColor}}"
+              aria-label="Category color"
+            />
+            <span
+              class="color-wheel-preview"
+              style="--selected-color: {{selectedColor}}; --selected-text-color: {{selectedColorText}}"
+            >
+              {{selectedColor}}
+            </span>
+          </div>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn-secondary modal-cancel">Cancel</button>
-        {{#if editingCategory}}
-        <button class="btn-danger delete-category-btn">Delete</button>
-        <button class="btn-primary save-category-btn">Save</button>
-        {{else}}
-        <button class="btn-primary create-category-btn">Create</button>
-        {{/if}}
-      </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary modal-cancel">
+            Cancel
+          </button>
+          {{#if editingCategory}}
+          <button type="button" class="btn-danger delete-category-btn">
+            Delete
+          </button>
+          <button type="submit" class="btn-primary save-category-btn">
+            Save
+          </button>
+          {{else}}
+          <button type="submit" class="btn-primary create-category-btn">
+            Create
+          </button>
+          {{/if}}
+        </div>
+      </form>
     </div>
   </div>
   {{/if}}

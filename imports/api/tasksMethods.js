@@ -4,6 +4,14 @@ import { TasksCollection } from "../db/TasksCollection";
 import { CategoriesCollection } from "../db/CategoriesCollection";
 
 // ─── Task Methods ─────────────────────────────────────────────────────────────
+const HEX_COLOR_REGEX = /^#[0-9a-f]{6}$/i;
+
+const assertHexColor = (color) => {
+  if (!HEX_COLOR_REGEX.test(color)) {
+    throw new Meteor.Error("Invalid category color.");
+  }
+};
+
 Meteor.methods({
   async "tasks.insert"({ text, category }) {
     check(text, String);
@@ -24,8 +32,47 @@ Meteor.methods({
   async "tasks.reorder"(taskId, newOrder) {
     check(taskId, String);
     check(newOrder, Number);
+    if (!this.userId) throw new Meteor.Error("Not authorized.");
 
-    await TasksCollection.updateAsync(taskId, { $set: { order: newOrder } });
+    const updated = await TasksCollection.updateAsync(
+      { _id: taskId, userId: this.userId },
+      { $set: { order: newOrder } },
+    );
+    if (!updated) throw new Meteor.Error("Access denied.");
+  },
+
+  async "tasks.reorderMany"(orderedTaskIds) {
+    check(orderedTaskIds, [String]);
+    if (!this.userId) throw new Meteor.Error("Not authorized.");
+
+    const uniqueTaskIds = [...new Set(orderedTaskIds)];
+    if (uniqueTaskIds.length !== orderedTaskIds.length) {
+      throw new Meteor.Error("Invalid task order.");
+    }
+
+    const ownedTasks = await TasksCollection.find(
+      { _id: { $in: orderedTaskIds }, userId: this.userId },
+      { fields: { _id: 1, order: 1 } },
+    ).fetchAsync();
+
+    if (ownedTasks.length !== orderedTaskIds.length) {
+      throw new Meteor.Error("Access denied.");
+    }
+
+    const existingOrders = ownedTasks
+      .map((task) => task.order)
+      .filter((order) => typeof order === "number")
+      .sort((a, b) => a - b);
+    const firstOrder = existingOrders.length ? existingOrders[0] : 0;
+
+    await Promise.all(
+      orderedTaskIds.map((taskId, index) =>
+        TasksCollection.updateAsync(
+          { _id: taskId, userId: this.userId },
+          { $set: { order: firstOrder + index * 1000 } },
+        ),
+      ),
+    );
   },
 
   async "tasks.remove"(taskId) {
@@ -72,15 +119,19 @@ Meteor.methods({
     check(name, String);
     check(color, String);
     if (!this.userId) throw new Meteor.Error("Not authorized.");
+    assertHexColor(color);
+
+    const cleanName = name.trim();
+    if (!cleanName) throw new Meteor.Error("Category name is required.");
 
     const exists = await CategoriesCollection.findOneAsync({
-      name,
-      userId: this.userId,
+      name: cleanName,
+      $or: [{ userId: this.userId }, { isBuiltIn: true }],
     });
     if (exists) throw new Meteor.Error("Category already exists.");
 
-    await CategoriesCollection.insertAsync({
-      name,
+    return await CategoriesCollection.insertAsync({
+      name: cleanName,
       color,
       userId: this.userId,
       isBuiltIn: false,
@@ -94,6 +145,10 @@ Meteor.methods({
     check(name, String);
     check(color, String);
     if (!this.userId) throw new Meteor.Error("Not authorized.");
+    assertHexColor(color);
+
+    const cleanName = name.trim();
+    if (!cleanName) throw new Meteor.Error("Category name is required.");
 
     const cat = await CategoriesCollection.findOneAsync({
       _id: categoryId,
@@ -102,16 +157,23 @@ Meteor.methods({
     if (!cat) throw new Meteor.Error("Not found.");
     if (cat.isBuiltIn) throw new Meteor.Error("Cannot edit built-in category.");
 
+    const duplicate = await CategoriesCollection.findOneAsync({
+      _id: { $ne: categoryId },
+      name: cleanName,
+      $or: [{ userId: this.userId }, { isBuiltIn: true }],
+    });
+    if (duplicate) throw new Meteor.Error("Category already exists.");
+
     const oldName = cat.name;
     await CategoriesCollection.updateAsync(categoryId, {
-      $set: { name, color },
+      $set: { name: cleanName, color },
     });
 
     // Rename tasks that used old category name
-    if (oldName !== name) {
+    if (oldName !== cleanName) {
       await TasksCollection.updateAsync(
         { userId: this.userId, category: oldName },
-        { $set: { category: name } },
+        { $set: { category: cleanName } },
         { multi: true },
       );
     }

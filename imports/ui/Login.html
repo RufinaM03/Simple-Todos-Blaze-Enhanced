@@ -1,5 +1,13 @@
 <template name="login">
   <div class="login-page">
+    <button
+      type="button"
+      class="login-theme-toggle"
+      title="Toggle dark mode"
+    >
+      {{#if isDarkMode}}☀️{{else}}🌙{{/if}}
+    </button>
+
     <div class="login-visual">
       <div class="login-visual-glow"></div>
 

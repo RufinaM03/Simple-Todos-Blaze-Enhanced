@@ -2,7 +2,7 @@
 
 A modern task management application built with **Meteor.js**, **Blaze**, and **MongoDB**, featuring authentication, task categories, drag-and-drop reordering, and a polished user experience.
 ## UI
-<img width="1918" height="1088" alt="image" src="https://github.com/user-attachments/assets/9374dd75-6c66-4606-9f98-c77c10ff641d" />
+<img width="1918" height="1090" alt="image" src="https://github.com/user-attachments/assets/9c9c9baf-0fc0-41f7-b0d2-704056ffe50d" />
 
 <img width="1917" height="1088" alt="image" src="https://github.com/user-attachments/assets/e7e974fb-071a-426c-b76b-c88852461ac8" />
 

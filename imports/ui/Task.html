@@ -1,0 +1,33 @@
+<template name="task">
+  <li
+    class="task-item {{#if isChecked}}completed{{/if}} {{#if isTutorialStep 2}}tutorial-highlight{{/if}}"
+    data-id="{{_id}}"
+    data-order="{{order}}"
+  >
+    <span class="drag-handle">
+      <span class="dot"></span>
+      <span class="dot"></span>
+
+      <span class="dot"></span>
+      <span class="dot"></span>
+
+      <span class="dot"></span>
+      <span class="dot"></span>
+    </span>
+
+    <div class="task-content">
+      <span class="task-text">{{text}}</span>
+      <span class="category {{category}}">{{category}}</span>
+    </div>
+
+    <button class="toggle-checked" title="Mark task as completed">
+      {{#if isChecked}}
+      <span class="check-icon">✓</span>
+      {{else}}
+      <span class="done-label">Done</span>
+      {{/if}}
+    </button>
+
+    <button class="delete" title="Delete task">🗑</button>
+  </li>
+</template>

@@ -1,0 +1,91 @@
+<body>
+  {{> mainContainer}}
+</body>
+
+<template name="mainContainer">
+  <div class="app">
+    {{#if isUserLogged}}
+
+    <header class="app-hero">
+      <div class="app-bar">
+        <div class="title-group">
+          <h1>📝 TaskFlow</h1>
+
+          <p class="subtitle">{{remainingTasksText}}</p>
+        </div>
+
+        <button class="logout-button user">
+          {{getUser.username}} | Logout
+        </button>
+      </div>
+    </header>
+
+    <main class="main">
+      {{#if showTutorial}}
+
+      <div class="tutorial-backdrop"></div>
+
+      <div class="tutorial-card tutorial-step-{{tutorialStep}}">
+        <span class="tutorial-badge"> Quick Tour </span>
+
+        <h2>{{tutorialTitle}}</h2>
+
+        <p>{{tutorialText}}</p>
+
+        <div class="tutorial-actions">
+          <button class="skip-tutorial">Skip</button>
+
+          <button class="next-tutorial">
+            {{#if isLastTutorialStep}} Finish {{else}} Next {{/if}}
+          </button>
+        </div>
+      </div>
+
+      {{/if}} {{> form}}
+
+      <div class="filter">
+        <button id="hide-completed-button">
+          {{#if hideCompleted}} Show All Tasks {{else}} Hide Completed {{/if}}
+        </button>
+      </div>
+
+      {{#if isLoading}}
+
+      <div class="loading">Loading tasks...</div>
+
+      {{/if}}
+
+      <ul class="tasks">
+        {{#each tasks}} {{> task}} {{/each}}
+      </ul>
+    </main>
+
+    {{else}} {{> login}} {{/if}}
+  </div>
+</template>
+
+<template name="form">
+  <!-- <form class="task-form {{#if isTutorialStep 0}}tutorial-highlight{{/if}}"> -->
+  <form class="task-form">
+    <input
+      type="text"
+      name="text"
+      placeholder="What needs to be done?"
+      autocomplete="off"
+    />
+
+    <select name="category">
+      <!-- <select
+      name="category"
+      class="{{#if isTutorialStep 1}}tutorial-highlight{{/if}}"
+    > -->
+      <option value="Work">Work</option>
+
+      <option value="Personal">Personal</option>
+
+      <option value="Urgent">Urgent</option>
+    </select>
+
+    <button type="submit">＋ Add Task</button>
+  </form>
+</template>

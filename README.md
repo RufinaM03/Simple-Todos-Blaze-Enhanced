@@ -53,8 +53,7 @@ Deployed Link: https://meteor-blaze.sandbox.galaxycloud.app/
 ## 🚀 Run Locally
 
 ```bash
-git clone <repo-url>
-cd taskflow-meteor-blaze
+git clone [<repo-url>](https://github.com/RufinaM03/Simple-Todos-Blaze-Enhanced.git)
 meteor npm install
 meteor run
 ```

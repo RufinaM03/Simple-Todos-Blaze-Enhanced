@@ -1,30 +1,85 @@
 <template name="login">
   <div class="login-page">
-    <div class="login-card">
-      <div class="logo">📝</div>
+    <div class="login-visual">
+      <div class="login-visual-glow"></div>
 
-      <h1>TaskFlow</h1>
+      <div class="floating-card card-1">
+        <span class="floating-dot work"></span>
+        <span class="floating-line"></span>
+      </div>
+      <div class="floating-card card-2 is-done">
+        <span class="floating-check">✓</span>
+        <span class="floating-line"></span>
+      </div>
+      <div class="floating-card card-3">
+        <span class="floating-dot urgent"></span>
+        <span class="floating-line"></span>
+      </div>
 
-      <p class="login-subtitle">Organize Your Work, Your Way!</p>
+      <div class="login-visual-content">
+        <div class="login-visual-icon">📝</div>
+        <h2>TaskFlow</h2>
+        <p>
+          Every task finds its place. Plan your day, clear your list, and watch
+          the board fill up with done.
+        </p>
+      </div>
+    </div>
 
-      <form class="login-form">
-        <input type="text" name="username" placeholder="Username" required />
+    <div class="login-panel">
+      <div class="login-card">
+        <div class="logo">📝</div>
 
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          required
-        />
+        <h1>{{pageTitle}}</h1>
 
-        <button type="submit">Log In</button>
-      </form>
+        <p class="login-subtitle">{{pageSubtitle}}</p>
 
-      <p class="switch-mode">
-        Don't have an account?
+        <form class="login-form">
+          <input
+            type="text"
+            name="username"
+            placeholder="Username"
+            autocomplete="username"
+            required
+          />
 
-        <span>Create One</span>
-      </p>
+          <input
+            type="password"
+            name="password"
+            placeholder="Password"
+            autocomplete="current-password"
+            required
+          />
+
+          {{#if isSignup}}
+          <input
+            type="password"
+            name="confirmPassword"
+            placeholder="Confirm password"
+            autocomplete="new-password"
+            required
+          />
+          {{/if}}
+
+          <button type="submit">{{buttonText}}</button>
+        </form>
+
+        {{#if errorMessage}}
+        <p class="auth-error">{{errorMessage}}</p>
+        {{/if}}
+
+        <p class="switch-mode">
+          {{switchText}}
+          <span>{{switchActionText}}</span>
+        </p>
+
+        {{#unless isSignup}}
+        <div class="demo-account">
+          <p>Demo account</p>
+          <span>meteorite / password</span>
+        </div>
+        {{/unless}}
+      </div>
     </div>
   </div>
 </template>

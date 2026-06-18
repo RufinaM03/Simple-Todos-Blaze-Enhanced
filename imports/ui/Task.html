@@ -1,26 +1,33 @@
 <template name="task">
   <li
-    class="task-item {{#if isChecked}}completed{{/if}} {{#if isTutorialStep 2}}tutorial-highlight{{/if}}"
+    class="task-item {{#if isChecked}}completed{{/if}} {{#if isTutorialStep 4}}tutorial-highlight{{/if}}"
     data-id="{{_id}}"
     data-order="{{order}}"
   >
-    <span class="drag-handle">
-      <span class="dot"></span>
-      <span class="dot"></span>
-
-      <span class="dot"></span>
-      <span class="dot"></span>
-
-      <span class="dot"></span>
-      <span class="dot"></span>
+    <span class="drag-handle" title="Drag to reorder">
+      <span class="dot"></span><span class="dot"></span>
+      <span class="dot"></span><span class="dot"></span>
+      <span class="dot"></span><span class="dot"></span>
     </span>
 
     <div class="task-content">
       <span class="task-text">{{text}}</span>
-      <span class="category {{category}}">{{category}}</span>
+      <span
+        class="category-badge {{#if isTutorialStep 5}}tutorial-highlight{{/if}} edit-category-badge"
+        data-category="{{category}}"
+        style="background: {{categoryColor}}1a; color: {{categoryColor}}; border-color: {{categoryColor}}33"
+        title="{{#if isCustomCategory}}Click to edit category{{/if}}"
+      >
+        <span class="cat-dot-sm" style="background:{{categoryColor}}"></span>
+        {{category}} {{#if isCustomCategory}}<span class="edit-hint">✎</span
+        >{{/if}}
+      </span>
     </div>
 
-    <button class="toggle-checked" title="Mark task as completed">
+    <button
+      class="toggle-checked {{#if isTutorialStep 5}}tutorial-highlight{{/if}}"
+      title="Mark complete"
+    >
       {{#if isChecked}}
       <span class="check-icon">✓</span>
       {{else}}

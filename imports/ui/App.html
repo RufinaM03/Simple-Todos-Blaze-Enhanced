@@ -3,89 +3,252 @@
 </body>
 
 <template name="mainContainer">
-  <div class="app">
+  <div class="app {{theme}}">
     {{#if isUserLogged}}
 
     <header class="app-hero">
       <div class="app-bar">
         <div class="title-group">
           <h1>📝 TaskFlow</h1>
-
           <p class="subtitle">{{remainingTasksText}}</p>
         </div>
-
-        <button class="logout-button user">
-          {{getUser.username}} | Logout
-        </button>
+        <div class="app-bar-actions">
+          <button class="theme-toggle" title="Toggle dark mode">
+            {{#if isDarkMode}}☀️{{else}}🌙{{/if}}
+          </button>
+          <button class="logout-button user">
+            {{getUser.username}} | Logout
+          </button>
+        </div>
       </div>
     </header>
 
     <main class="main">
       {{#if showTutorial}}
-
       <div class="tutorial-backdrop"></div>
-
       <div class="tutorial-card tutorial-step-{{tutorialStep}}">
-        <span class="tutorial-badge"> Quick Tour </span>
-
+        <span class="tutorial-badge"
+          >Quick Tour — {{tutorialStepNum}}/{{tutorialTotalSteps}}</span
+        >
         <h2>{{tutorialTitle}}</h2>
-
         <p>{{tutorialText}}</p>
-
         <div class="tutorial-actions">
           <button class="skip-tutorial">Skip</button>
-
           <button class="next-tutorial">
-            {{#if isLastTutorialStep}} Finish {{else}} Next {{/if}}
+            {{#if isLastTutorialStep}}Finish{{else}}Next →{{/if}}
           </button>
         </div>
       </div>
-
       {{/if}} {{> form}}
 
-      <div class="filter">
-        <button id="hide-completed-button">
-          {{#if hideCompleted}} Show All Tasks {{else}} Hide Completed {{/if}}
-        </button>
+      <div class="controls-bar">
+        <div
+          class="category-filters {{#if isTutorialStep 3}}tutorial-highlight{{/if}}"
+        >
+          <button
+            class="filter-btn {{#if isActiveCategory 'all'}}active{{/if}}"
+            data-category="all"
+          >
+            All
+          </button>
+          {{#each allCategories}}
+          <button
+            class="filter-btn {{#if ../isActiveCategory name}}active{{/if}}"
+            data-category="{{name}}"
+            style="--cat-color: {{color}}"
+          >
+            <span class="cat-dot" style="background:{{color}}"></span>{{name}}
+          </button>
+          {{/each}}
+        </div>
+
+        <div class="view-controls">
+          <button
+            id="hide-completed-button"
+            class="icon-btn"
+            title="{{#if hideCompleted}}Show All{{else}}Hide Completed{{/if}}"
+          >
+            {{#if hideCompleted}}👁 Show All{{else}}✓ Hide Done{{/if}}
+          </button>
+          <div
+            class="view-toggle {{#if isTutorialStep 6}}tutorial-highlight{{/if}}"
+          >
+            <button
+              class="view-btn {{#if isListView}}active{{/if}}"
+              id="list-view-btn"
+              title="List view"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <rect
+                  x="0"
+                  y="2"
+                  width="16"
+                  height="2"
+                  rx="1"
+                  fill="currentColor"
+                />
+                <rect
+                  x="0"
+                  y="7"
+                  width="16"
+                  height="2"
+                  rx="1"
+                  fill="currentColor"
+                />
+                <rect
+                  x="0"
+                  y="12"
+                  width="16"
+                  height="2"
+                  rx="1"
+                  fill="currentColor"
+                />
+              </svg>
+            </button>
+            <button
+              class="view-btn {{#if isGridView}}active{{/if}}"
+              id="grid-view-btn"
+              title="Grid view"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <rect
+                  x="0"
+                  y="0"
+                  width="7"
+                  height="7"
+                  rx="1.5"
+                  fill="currentColor"
+                />
+                <rect
+                  x="9"
+                  y="0"
+                  width="7"
+                  height="7"
+                  rx="1.5"
+                  fill="currentColor"
+                />
+                <rect
+                  x="0"
+                  y="9"
+                  width="7"
+                  height="7"
+                  rx="1.5"
+                  fill="currentColor"
+                />
+                <rect
+                  x="9"
+                  y="9"
+                  width="7"
+                  height="7"
+                  rx="1.5"
+                  fill="currentColor"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="search-bar-wrap">
+        <input
+          type="text"
+          id="task-search"
+          class="search-bar"
+          placeholder="🔍 Search tasks..."
+          autocomplete="off"
+          value="{{searchQuery}}"
+        />
+        {{#if searchQuery}}<button class="search-clear">✕</button>{{/if}}
       </div>
 
       {{#if isLoading}}
-
-      <div class="loading">Loading tasks...</div>
-
-      {{/if}}
-
-      <ul class="tasks">
-        {{#each tasks}} {{> task}} {{/each}}
+      <div class="loading">
+        <div class="loading-spinner"></div>
+        Loading tasks…
+      </div>
+      {{else}} {{#if hasNoTasks}}
+      <div class="empty-state">
+        <div class="empty-illustration">📋</div>
+        <h3>{{emptyStateTitle}}</h3>
+        <p>{{emptyStateText}}</p>
+      </div>
+      {{else}}
+      <ul class="tasks {{viewClass}}">
+        {{#each tasks}}{{> task}}{{/each}}
       </ul>
+      {{/if}} {{/if}}
     </main>
 
-    {{else}} {{> login}} {{/if}}
+    {{> categoryModal}} {{else}}{{> login}}{{/if}}
   </div>
 </template>
 
 <template name="form">
-  <!-- <form class="task-form {{#if isTutorialStep 0}}tutorial-highlight{{/if}}"> -->
-  <form class="task-form">
+  <form class="task-form {{#if isTutorialStep 0}}tutorial-highlight{{/if}}">
     <input
       type="text"
       name="text"
       placeholder="What needs to be done?"
       autocomplete="off"
     />
-
-    <select name="category">
-      <!-- <select
-      name="category"
-      class="{{#if isTutorialStep 1}}tutorial-highlight{{/if}}"
-    > -->
-      <option value="Work">Work</option>
-
-      <option value="Personal">Personal</option>
-
-      <option value="Urgent">Urgent</option>
-    </select>
-
+    <div class="select-wrap {{#if isTutorialStep 1}}tutorial-highlight{{/if}}">
+      <select name="category">
+        <option value="" disabled selected>Category</option>
+        {{#each allCategories}}
+        <option value="{{name}}">{{name}}</option>
+        {{/each}}
+      </select>
+    </div>
+    <button
+      type="button"
+      class="add-category-btn {{#if isTutorialStep 2}}tutorial-highlight{{/if}}"
+      id="open-category-modal"
+      title="Add new category"
+    >
+      ＋ Category
+    </button>
     <button type="submit">＋ Add Task</button>
   </form>
+</template>
+
+<template name="categoryModal">
+  {{#if showCategoryModal}}
+  <div class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>{{#if editingCategory}}Edit Category{{else}}New Category{{/if}}</h3>
+        <button class="modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <label>Category Name</label>
+        <input
+          type="text"
+          id="category-name-input"
+          placeholder="e.g. Study, Health…"
+          value="{{editingCategoryName}}"
+        />
+        <label>Tag Color</label>
+        <div class="color-swatches">
+          {{#each colorOptions}}
+          <button
+            class="swatch {{#if isSelectedColor value}}selected{{/if}}"
+            data-color="{{value}}"
+            style="background:{{value}}"
+            title="{{label}}"
+          ></button>
+          {{/each}}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary modal-cancel">Cancel</button>
+        {{#if editingCategory}}
+        <button class="btn-danger delete-category-btn">Delete</button>
+        <button class="btn-primary save-category-btn">Save</button>
+        {{else}}
+        <button class="btn-primary create-category-btn">Create</button>
+        {{/if}}
+      </div>
+    </div>
+  </div>
+  {{/if}}
 </template>

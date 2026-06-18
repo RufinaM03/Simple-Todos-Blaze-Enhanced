@@ -6,6 +6,7 @@ Deployed Link: https://meteor-blaze.sandbox.galaxycloud.app/
 
 ## UI
 <img width="1917" height="1198" alt="image" src="https://github.com/user-attachments/assets/c2ba2696-cb95-441c-b2f2-d65ef34813ea" />
+
 ## 🛠 Tech Stack
 
 - Meteor 3
@@ -24,6 +25,8 @@ Deployed Link: https://meteor-blaze.sandbox.galaxycloud.app/
 <img width="1917" height="1197" alt="image" src="https://github.com/user-attachments/assets/93b3706d-2f97-4554-aebc-626cd01d6af2" />
 <img width="1912" height="1198" alt="image" src="https://github.com/user-attachments/assets/84571ad3-1c86-447b-bf11-40e57093caa6" />
 <img width="1917" height="1198" alt="image" src="https://github.com/user-attachments/assets/4f1f021d-2333-447f-8a1f-6f2d30fcd208" />
+<img width="1917" height="1197" alt="image" src="https://github.com/user-attachments/assets/f0fe3a76-df46-40fc-ad65-030bf3311a91" />
+
 
 
 
@@ -41,14 +44,14 @@ Deployed Link: https://meteor-blaze.sandbox.galaxycloud.app/
 - Interactive User Onboarding
 - Responsive Modern UI
 
-<img width="1918" height="1197" alt="image" src="https://github.com/user-attachments/assets/765f8fd1-ee9e-4a5b-8715-eb37d74136a6" />
-<img width="1918" height="1192" alt="image" src="https://github.com/user-attachments/assets/6c50a864-397d-4238-9630-cf9bd92be6e8" />
-<img width="1918" height="1192" alt="image" src="https://github.com/user-attachments/assets/b9bf56f0-b2da-423b-b453-778dc6715d08" />
-<img width="1917" height="1192" alt="image" src="https://github.com/user-attachments/assets/710e2978-2b22-4792-adb9-7791d2953c39" />
-<img width="1918" height="1195" alt="image" src="https://github.com/user-attachments/assets/d212617d-0df7-4684-8855-a6f66059a3a4" />
-<img width="1918" height="1198" alt="image" src="https://github.com/user-attachments/assets/c39128d1-954e-49d7-9989-7b693d13ef80" />
-<img width="1917" height="1198" alt="image" src="https://github.com/user-attachments/assets/3e4ca25f-06a5-4e65-8606-dccd2a96f85f" />
-<img width="1917" height="1197" alt="image" src="https://github.com/user-attachments/assets/a93819b1-12ed-427c-a8cd-f2c8cc74233d" />
+<img width="1918" height="1198" alt="image" src="https://github.com/user-attachments/assets/9418a719-b2e5-4291-9585-a9387fc53a0b" />
+<img width="1918" height="1197" alt="image" src="https://github.com/user-attachments/assets/98b3e9d1-2144-4c67-b1cf-0447517fc7f3" />
+<img width="1917" height="1197" alt="image" src="https://github.com/user-attachments/assets/99ad8ffe-3fcb-49a9-be63-44828d0bea7e" />
+<img width="1918" height="1197" alt="image" src="https://github.com/user-attachments/assets/89a8c9c1-e68e-4815-aad4-227505a08bcf" />
+<img width="1918" height="1198" alt="image" src="https://github.com/user-attachments/assets/7f23433f-d14a-4f15-9103-4ac11fd4f7b7" />
+<img width="1918" height="1197" alt="image" src="https://github.com/user-attachments/assets/4f29f80c-470d-4fbe-8f82-f374c78794cb" />
+<img width="1918" height="1198" alt="image" src="https://github.com/user-attachments/assets/e39e2d3b-049f-47e5-bb5a-9d8f52370f3c" />
+
 
 ## 🚀 Run Locally
 
@@ -67,6 +70,7 @@ imports/
 │   └── tasksPublications.js
 ├── db/
 │   └── TasksCollection.js
+│   └── CategoriesCollection.js
 ├── ui/
 │   ├── App.html
 │   ├── App.js
